@@ -94,6 +94,8 @@ canvas{display:block;width:100%}
 .crew a,.crew button{font:600 15px var(--body);padding:7px 12px;border-radius:3px;cursor:pointer;text-decoration:none;border:1px solid var(--line);background:var(--panel);color:var(--text)}
 .crew a.go{background:var(--bull);border-color:var(--bull);color:#10240f}
 .crew a.more{border:0;background:none;padding:7px 2px;text-decoration:underline;color:var(--muted)}
+.share{font:600 14.5px var(--body);padding:7px 14px;border-radius:3px;cursor:pointer;border:1px solid var(--line);background:var(--panel);color:var(--text);margin-top:10px}
+.share:hover{border-color:var(--text)}
 footer{color:var(--muted);font-size:13.5px;margin-top:34px;max-width:80ch}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -118,6 +120,7 @@ footer{color:var(--muted);font-size:13.5px;margin-top:34px;max-width:80ch}
   <div class="front-bar"><div class="fb-bull" id="fbBull" style="flex-basis:33%">Bulls</div><div class="fb-con" id="fbCon" style="flex-basis:34%">…</div><div class="fb-bear" id="fbBear" style="flex-basis:33%">Bears</div></div>
   <div class="note" id="frontNote">Loading the battlefield from GMX…</div>
   <div class="note" id="openNote"></div>
+  <button type="button" class="share" id="shareMap">Share today's map on X</button>
 </div>
 <div class="err" id="err"></div>
 
@@ -168,6 +171,7 @@ footer{color:var(--muted);font-size:13.5px;margin-top:34px;max-width:80ch}
       <h3 id="ovTitle">60 seconds, 3 lives</h3>
       <p id="ovText">Move with your mouse, finger, or the arrow keys. Your crates score, gold crates score for anyone, and each enemy crate you catch costs a life.</p>
       <button class="play" id="playBtn">Play</button>
+      <button type="button" class="share" id="shareRain" hidden>Share your score on X</button>
     </div>
   </div>
   <p class="note" id="dropNote">No real drops yet this session. The page checks GMX every minute; a big move will show up here and in the game.</p>
@@ -404,6 +408,9 @@ $('pickBull').onclick=()=>choose('bull'); $('pickBear').onclick=()=>choose('bear
 const Rain=(()=>{
   const cvs=$('cvs'), ctx=cvs.getContext('2d'), ov=$('ov'), btn=$('playBtn');
   const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let lastScore=null;
+  $('shareRain').onclick=()=>{ if(!lastScore) return;
+    postX(`I caught ${lastScore.score} in Liquidation Rain for the ${sideName(lastScore.side)}. Every crate is a live GMX market, and the big ones are real liquidations and closes. Beat it:`); };
   let W=800,H=400,dpr=1, G=null, pending=[], keys={}, raf=0, last=0;
   const best=()=>store.get('bvb-rain-best',0);
   function size(){ dpr=Math.min(devicePixelRatio||1,2); W=cvs.clientWidth; H=Math.min(440,Math.max(300,W*.5)); cvs.style.height=H+'px'; cvs.width=W*dpr; cvs.height=H*dpr; ctx.setTransform(dpr,0,0,dpr,0,0); if(!G) drawIdle(); }
@@ -437,6 +444,7 @@ const Rain=(()=>{
     $('ovTitle').textContent=G.lives<=0?`Out of lives at ${G.score}`:`Time. You scored ${G.score}`;
     $('ovText').textContent=G.score>b?'That\'s a new personal best on this device.':`Your best is ${Math.max(b,G.score)}. Big crates are worth 50, so catch the real drops.`;
     btn.textContent='Play again'; ov.hidden=false;
+    $('shareRain').hidden=false; lastScore={score:G.score, side:G.side};
   }
   function loop(now){
     if (!G||!G.running) return;
@@ -594,6 +602,21 @@ const Whale=(()=>{
 })();
 
 $('crewCopy').onclick=async()=>{ const b=$('crewCopy'); try{ await navigator.clipboard.writeText('barcode557a'); b.textContent='Copied'; }catch{ b.textContent='Copy blocked: barcode557a'; } setTimeout(()=>b.textContent='Copy code',2500); };
+
+/* ---------- share to X ---------- */
+function siteUrl(){ return location.origin + location.pathname.replace(/index\.html$/,''); }
+function postX(text){
+  const u='https://twitter.com/intent/tweet?text='+encodeURIComponent(text)+'&url='+encodeURIComponent(siteUrl());
+  window.open(u,'_blank','noopener,width=600,height=520');
+}
+$('shareMap').onclick=()=>{
+  if (!S.terr.length) return;
+  const c=counts(), lead=c.bull>c.bear?'Bulls lead':c.bear>c.bull?'Bears lead':'Dead even';
+  const top=[...S.terr].filter(t=>!t.missing).sort((a,b)=>Math.abs(b.move)-Math.abs(a.move))[0];
+  const swing=top&&Math.abs(top.move)>CONFIG.DEAD?` Biggest swing: ${top.sym}, ${Math.abs(top.move*100).toFixed(1)} points toward the ${sideName(top.move>0?'bull':'bear')}.`:'';
+  const me=mySide()?` I'm with the ${sideName(mySide())}.`:'';
+  postX(`${lead} ${c.bull}–${c.bear} on the GMX territory map today.${swing}${me} ${untilReset()} left in the round. Pick your side:`);
+};
 
 /* ---------- boot ---------- */
 (async()=>{
