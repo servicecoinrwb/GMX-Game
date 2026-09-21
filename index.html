@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Bulls vs Bears — GMX territory war</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ground:#1f2c35; --panel:#283843; --line:#3a4d5a; --text:#e6e2d3; --muted:#9fb0b8;
+  --bull:#5bb46a; --bear:#d25a3c; --brass:#c9b458;
+  --display:'Big Shoulders Display','Arial Narrow',Impact,sans-serif;
+  --body:'IBM Plex Sans','Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+*,*::before,*::after{box-sizing:inherit}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--ground);color:var(--text);font:16px/1.5 var(--body);
+  background-image:repeating-radial-gradient(circle at 70% 30%,transparent 0 38px,rgba(255,255,255,.025) 38px 39px)}
+.wrap{max-width:1180px;margin:0 auto;padding:24px 20px 48px}
+header h1{font:800 clamp(44px,8vw,88px)/.9 var(--display);margin:0;letter-spacing:.01em}
+header p{color:var(--muted);max-width:64ch;margin:10px 0 0}
+.front{margin:26px 0 8px}
+.front-bar{display:flex;height:34px;border:1px solid var(--line);border-radius:3px;overflow:hidden}
+.front-bar div{transition:flex-basis .8s ease;display:flex;align-items:center;font:600 20px var(--display);padding:0 10px;white-space:nowrap;overflow:hidden}
+.fb-bull{background:var(--bull);color:#10240f}.fb-con{background:var(--brass);color:#2a2508;justify-content:center}.fb-bear{background:var(--bear);color:#2c0d05;justify-content:flex-end}
+.note{color:var(--muted);font-size:14px;margin-top:6px}
+.grid{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:28px;margin-top:22px}
+@media (max-width:860px){.grid{grid-template-columns:1fr}}
+.map{background:rgba(0,0,0,.12);border:1px solid var(--line);border-radius:6px;padding:10px}
+svg{width:100%;height:auto;display:block}
+.hex{cursor:pointer;outline:none}
+.hex polygon{stroke:var(--ground);stroke-width:3;transition:fill .6s ease,fill-opacity .6s ease}
+.hex:hover polygon,.hex:focus-visible polygon{stroke:var(--text)}
+.hex.sel polygon{stroke:var(--text);stroke-width:4}
+.hex text{pointer-events:none;fill:var(--text);text-anchor:middle}
+.hex .sym{font:800 17px var(--display)}.hex .sk{font:500 11px var(--body);opacity:.85}
+.legend{display:flex;gap:18px;flex-wrap:wrap;color:var(--muted);font-size:13px;padding:8px 6px 2px}
+.legend i{display:inline-block;width:11px;height:11px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+aside section{border-top:1px solid var(--line);padding:18px 0}
+aside section:first-child{border-top:0;padding-top:0}
+h2{font:800 34px/1 var(--display);margin:0 0 6px}
+h3{font:600 22px/1.1 var(--display);margin:0 0 8px;letter-spacing:.02em}
+.status{font-weight:600}
+.oi{display:grid;grid-template-columns:auto 1fr;gap:4px 14px;margin:12px 0}
+.oi dt{color:var(--muted)}.oi dd{margin:0;font-weight:500}
+.hint{color:var(--muted);font-size:14.5px;margin:8px 0 0}
+.sides{display:flex;gap:10px;margin-top:10px}
+.sides button{flex:1;font:800 24px var(--display);padding:10px;border-radius:4px;cursor:pointer;border:2px solid transparent;color:#161d22}
+.sides .b1{background:var(--bull)}.sides .b2{background:var(--bear)}
+.sides button[aria-pressed="true"]{border-color:var(--text);box-shadow:0 0 0 3px rgba(230,226,211,.25)}
+.sides button:disabled[aria-pressed="false"]{opacity:.35;cursor:not-allowed}
+.sides button:disabled[aria-pressed="true"]{cursor:default}
+button:focus-visible{outline:3px solid var(--text);outline-offset:2px}
+.hist{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.hist div{min-width:62px;padding:6px 8px;border-radius:3px;font-size:12.5px;line-height:1.25;color:#161d22}
+.hist b{display:block;font:600 17px var(--display)}
+.err{background:rgba(210,90,60,.12);border:1px solid var(--bear);border-radius:4px;padding:12px 14px;margin-top:18px;display:none}
+.err code{font-size:13px;word-break:break-all}
+/* rain */
+.rain{margin-top:44px;border-top:1px solid var(--line);padding-top:26px}
+.rain h2{font-size:clamp(38px,6vw,60px)}
+.rain > p{color:var(--muted);max-width:68ch;margin:0 0 16px}
+.stage{position:relative;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#172229;touch-action:none}
+canvas{display:block;width:100%}
+.overlay{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:10px;background:rgba(23,34,41,.86);padding:20px}
+.overlay[hidden]{display:none}
+.overlay h3{font-size:34px;margin:0}
+.overlay p{margin:0;color:var(--muted);max-width:44ch}
+.play{font:800 26px var(--display);padding:10px 30px;border-radius:4px;border:0;cursor:pointer;background:var(--text);color:#172229}
+.play:disabled{opacity:.4;cursor:not-allowed}
+footer{color:var(--muted);font-size:13.5px;margin-top:34px;max-width:80ch}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>Bulls vs Bears</h1>
+  <p>Every GMX market is a territory. The map opens fresh at 00:00 UTC, and whichever side pushes a market its way since the open takes the ground. Longs flowing in move it toward the Bulls; shorts flowing in move it toward the Bears.</p>
+</header>
+
+<div class="front" aria-live="polite">
+  <div class="front-bar"><div class="fb-bull" id="fbBull" style="flex-basis:33%">Bulls</div><div class="fb-con" id="fbCon" style="flex-basis:34%">…</div><div class="fb-bear" id="fbBear" style="flex-basis:33%">Bears</div></div>
+  <div class="note" id="frontNote">Loading the battlefield from GMX…</div>
+  <div class="note" id="openNote"></div>
+</div>
+<div class="err" id="err"></div>
+
+<div class="grid">
+  <div class="map">
+    <svg id="map" viewBox="-255 -235 510 470" role="group" aria-label="Territory map of GMX markets"></svg>
+    <div class="legend"><span><i style="background:var(--bull)"></i>Bulls gaining today</span><span><i style="background:var(--bear)"></i>Bears gaining today</span><span><i style="background:var(--brass)"></i>Contested</span><span>Numbers are margin points moved since the open</span></div>
+  </div>
+  <aside>
+    <section id="detail">
+      <h2>Pick a territory</h2>
+      <p class="hint">Tap any hex to see how it opened, where it is now, and what it would take to swing it.</p>
+    </section>
+    <section>
+      <h3>Your side today</h3>
+      <div class="sides"><button class="b1" id="pickBull" aria-pressed="false">Bulls</button><button class="b2" id="pickBear" aria-pressed="false">Bears</button></div>
+      <p class="hint" id="sideNote">Pick a side for today. It locks once you choose, and your side wins if it takes more territory by 00:00 UTC.</p>
+      <p class="hint" id="countNote"></p>
+      <p class="hint" id="streakNote"></p>
+    </section>
+    <section>
+      <h3>Last 7 rounds</h3>
+      <div class="hist" id="hist"></div>
+      <p class="hint" id="histNote"></p>
+    </section>
+  </aside>
+</div>
+
+<section class="rain" aria-labelledby="rainTitle">
+  <h2 id="rainTitle">Liquidation Rain</h2>
+  <p>Catch crates for your side and dodge the other side's. Every crate is a real GMX territory, colored by who's winning it today. The big ones are real events: when a market sheds a chunk of longs or shorts between updates — closes or liquidations — it drops as a crate for the side that gained.</p>
+  <div class="stage" id="stage">
+    <canvas id="cvs" aria-label="Liquidation Rain game"></canvas>
+    <div class="overlay" id="ov">
+      <h3 id="ovTitle">60 seconds, 3 lives</h3>
+      <p id="ovText">Move with your mouse, finger, or the arrow keys. Your crates score, gold crates score for anyone, and each enemy crate you catch costs a life.</p>
+      <button class="play" id="playBtn">Play</button>
+    </div>
+  </div>
+  <p class="note" id="dropNote">No real drops yet this session. The page checks GMX every minute; a big move will show up here and in the game.</p>
+</section>
+
+<footer>Data: GMX V2 on Arbitrum, open interest summed across every pool for the same market. Nobody's funds are touched and no wallet is needed; this page only reads public market data. A market's margin is (longs − shorts) ÷ (longs + shorts). A territory counts as contested until its margin moves more than <span id="deadPts"></span> points either way from the open.</footer>
+</div>
+
+<script>
+const CONFIG = {
+  GMX: ['https://arbitrum-api.gmxinfra.io/markets/info','https://arbitrum-api-fallback.gmxinfra.io/markets/info'],
+  FUNCTION_URL: '',        // e.g. https://YOUR_PROJECT_REF.supabase.co/functions/v1/bvb
+  SUPABASE_ANON_KEY: '',   // publishable key
+  REFRESH_MS: 60000,
+  SERVER_MS: 300000,
+  TERRITORIES: 19,
+  DEAD: 0.005,             // must match DEAD in the Edge Function
+  HEX: 50,
+  DROP_MIN_USD: 50000, DROP_MIN_PCT: 0.02
+};
+document.getElementById('deadPts').textContent = (CONFIG.DEAD*100).toFixed(1);
+
+const $ = id => document.getElementById(id);
+const today = () => new Date().toISOString().slice(0,10);
+const store = {
+  get(k,d){ try{ const v=localStorage.getItem(k); return v?JSON.parse(v):d; }catch{ return d; } },
+  set(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch{} }
+};
+let anonId = store.get('bvb-anon', null);
+if (!anonId){ anonId = (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx'.replace(/x/g,()=>(Math.random()*16|0).toString(16))); store.set('bvb-anon', anonId); }
+
+const S = { live:null, prevLive:null, open:null, openDay:null, openSource:null, openAt:null,
+  terr:[], selected:null, updated:null, counts:null, history:[], serverSide:null, serverErr:null, pickErr:null };
+
+/* ---------- data ---------- */
+function toUsd(v){
+  if (v==null) return NaN; if (typeof v==='number') return v;
+  const s=String(v).trim();
+  if (/^-?\d+$/.test(s) && s.replace('-','').length>24) return Number(BigInt(s)/10n**24n)/1e6;
+  return parseFloat(s);
+}
+const pickKey=(o,ks)=>{ for(const k of ks) if(o[k]!=null) return o[k]; };
+const LONG_KEYS=['openInterestLong','longOpenInterest','openInterestLongUsd','longOpenInterestUsd'];
+const SHORT_KEYS=['openInterestShort','shortOpenInterest','openInterestShortUsd','shortOpenInterestUsd'];
+function aggregate(list){
+  const by={};
+  for (const m of list){
+    const name=m.name||'';
+    if (!name||name.startsWith('SWAP-ONLY')||m.isListed===false||/deprecated/i.test(name)) continue;
+    const sym=name.split('/')[0].trim(), L=toUsd(pickKey(m,LONG_KEYS)), Sh=toUsd(pickKey(m,SHORT_KEYS));
+    if (!isFinite(L)||!isFinite(Sh)) continue;
+    (by[sym] ||= {sym,long:0,short:0,pools:0}); by[sym].long+=L; by[sym].short+=Sh; by[sym].pools++;
+  }
+  return by;
+}
+const ranked = by => Object.values(by).filter(m=>m.long+m.short>0).sort((a,b)=>(b.long+b.short)-(a.long+a.short));
+const margin = m => { const t=m.long+m.short; return t>0?(m.long-m.short)/t:0; };
+
+async function fetchGmx(){
+  let last='';
+  for (const url of CONFIG.GMX){
+    try{
+      const r=await fetch(url,{cache:'no-store'});
+      if (!r.ok){ last=url+' answered HTTP '+r.status; continue; }
+      const j=await r.json(), list=Array.isArray(j)?j:(j.markets||[]), by=aggregate(list);
+      if (Object.keys(by).length) return by;
+      last='GMX answered but no open interest fields were found. Fields seen: '+(list[0]?Object.keys(list[0]).join(', '):'(empty)');
+    }catch(e){ last=url+': '+e.message; }
+  }
+  throw new Error(last);
+}
+
+async function api(method, params, body){
+  const u=new URL(CONFIG.FUNCTION_URL); Object.entries(params||{}).forEach(([k,v])=>u.searchParams.set(k,v));
+  const r=await fetch(u,{method,headers:{'content-type':'application/json',apikey:CONFIG.SUPABASE_ANON_KEY,Authorization:'Bearer '+CONFIG.SUPABASE_ANON_KEY},body:body?JSON.stringify(body):undefined});
+  const j=await r.json().catch(()=>({error:'Scoreboard answered HTTP '+r.status}));
+  if (!r.ok) throw new Error(j.error||('HTTP '+r.status));
+  return j;
+}
+
+async function refreshServer(){
+  if (!CONFIG.FUNCTION_URL){ S.serverErr='not-configured'; return; }
+  try{
+    const j=await api('GET',{action:'state',anon_id:anonId});
+    S.open=j.open; S.openDay=j.day; S.openSource='shared'; S.openAt=j.taken_at;
+    S.counts=j.counts; S.history=j.history||[]; S.serverSide=j.your_side; S.serverErr=null;
+  }catch(e){ S.serverErr=e.message; }
+}
+
+function ensureLocalOpen(){
+  if (S.openSource==='shared' && S.openDay===today()) return;
+  let o=store.get('bvb-open',null);
+  if (!o || o.day!==today()){ o={day:today(), at:new Date().toISOString(), markets:ranked(S.live).slice(0,CONFIG.TERRITORIES)}; store.set('bvb-open',o); }
+  S.open=o.markets; S.openDay=o.day; S.openSource='local'; S.openAt=o.at;
+}
+
+function buildTerritories(){
+  S.terr=S.open.map(o=>{
+    const l=S.live[o.sym];
+    if (!l) return {sym:o.sym, missing:true, side:'con', move:0, total:o.long+o.short, mOpen:margin(o)};
+    const mOpen=margin(o), mNow=margin(l), move=mNow-mOpen;
+    const side=move>CONFIG.DEAD?'bull':move<-CONFIG.DEAD?'bear':'con';
+    return {sym:o.sym, long:l.long, short:l.short, total:l.long+l.short, pools:l.pools, mOpen, mNow, move, side};
+  });
+}
+
+function detectDrops(){
+  if (!S.prevLive) return;
+  for (const t of S.terr){
+    const a=S.prevLive[t.sym], b=S.live[t.sym]; if(!a||!b) continue;
+    const th=Math.max(CONFIG.DROP_MIN_USD, CONFIG.DROP_MIN_PCT*(a.long+a.short));
+    const dL=b.long-a.long, dS=b.short-a.short, when=new Date().toLocaleTimeString([],{hour:'numeric',minute:'2-digit'});
+    if (dL<-th){ Rain.queue({sym:t.sym, side:'bear', label:'−'+fmt(-dL)+' longs'}); $('dropNote').textContent=`${when}: ${t.sym} lost ${fmt(-dL)} of longs, so it dropped as a big Bear crate.`; }
+    if (dS<-th){ Rain.queue({sym:t.sym, side:'bull', label:'−'+fmt(-dS)+' shorts'}); $('dropNote').textContent=`${when}: ${t.sym} lost ${fmt(-dS)} of shorts, so it dropped as a big Bull crate.`; }
+  }
+}
+
+async function tick(){
+  if (S.openDay && S.openDay!==today()){ await refreshServer(); }
+  try{ S.prevLive=S.live; S.live=await fetchGmx(); S.updated=new Date(); hideErr(); }
+  catch(e){ showErr(`The map can't reach GMX market data right now${S.live?', so it\'s showing the last reading':''}. Reason: <code>${e.message}</code>. If you opened this file straight from your computer, host it on your site instead; some browsers block data requests from local files. It retries every minute.`); if(!S.live) return; }
+  ensureLocalOpen(); buildTerritories(); detectDrops(); render();
+}
+function showErr(h){ const e=$('err'); e.innerHTML=h; e.style.display='block'; }
+function hideErr(){ $('err').style.display='none'; }
+
+/* ---------- map ---------- */
+function ringCoords(n){
+  const d=[[1,0],[1,-1],[0,-1],[-1,0],[-1,1],[0,1]], out=[[0,0]];
+  for (let k=1; out.length<n; k++){ let q=d[4][0]*k, r=d[4][1]*k; for(let i=0;i<6;i++) for(let j=0;j<k;j++){ out.push([q,r]); q+=d[i][0]; r+=d[i][1]; } }
+  return out.slice(0,n);
+}
+function hexPts(cx,cy,s){ const p=[]; for(let i=0;i<6;i++){ const a=Math.PI/180*(60*i-30); p.push((cx+s*Math.cos(a)).toFixed(1)+','+(cy+s*Math.sin(a)).toFixed(1)); } return p.join(' '); }
+const color = s => s==='bull'?'var(--bull)':s==='bear'?'var(--bear)':'var(--brass)';
+const fmt = n => n>=1e9?'$'+(n/1e9).toFixed(2)+'B':n>=1e6?'$'+(n/1e6).toFixed(1)+'M':'$'+Math.round(n/1e3)+'K';
+const pts = m => (m>0?'+':'')+(m*100).toFixed(1);
+const sideName = s => s==='bull'?'Bulls':s==='bear'?'Bears':'Nobody';
+
+function render(){
+  const svg=$('map'), s=CONFIG.HEX, co=ringCoords(S.terr.length);
+  svg.innerHTML=S.terr.map((t,i)=>{
+    const [q,r]=co[i], x=s*Math.sqrt(3)*(q+r/2), y=s*1.5*r;
+    const op=t.side==='con'?.8:(.45+Math.min(Math.abs(t.move)/.05,1)*.55).toFixed(2);
+    const lab=`${t.sym}: ${t.side==='con'?'contested':sideName(t.side)+' gaining'}, ${pts(t.move)} points since the open`;
+    return `<g class="hex${S.selected===t.sym?' sel':''}" tabindex="0" role="button" aria-label="${lab}" data-sym="${t.sym}">
+      <polygon points="${hexPts(x,y,s-2)}" fill="${color(t.side)}" fill-opacity="${op}"/>
+      <text class="sym" x="${x}" y="${y+2}">${t.sym}</text><text class="sk" x="${x}" y="${y+18}">${t.missing?'no data':pts(t.move)}</text></g>`;
+  }).join('');
+  svg.querySelectorAll('.hex').forEach(g=>{
+    const go=()=>{ S.selected=g.dataset.sym; render(); };
+    g.addEventListener('click',go); g.addEventListener('keydown',e=>{ if(e.key==='Enter'||e.key===' '){ e.preventDefault(); go(); } });
+  });
+  renderFront(); renderDetail(); renderSide(); renderHistory();
+}
+function counts(){ const c={bull:0,bear:0,con:0}; S.terr.forEach(t=>c[t.side]++); return c; }
+function untilReset(){ const n=new Date(), e=Date.UTC(n.getUTCFullYear(),n.getUTCMonth(),n.getUTCDate()+1), m=Math.max(0,Math.round((e-n)/60000)); return Math.floor(m/60)+'h '+(m%60)+'m'; }
+
+function renderFront(){
+  const c=counts(), n=S.terr.length||1;
+  const set=(id,v,txt)=>{ const el=$(id); el.style.flexBasis=(v/n*100)+'%'; el.textContent=v?txt:''; };
+  set('fbBull',c.bull,'Bulls '+c.bull); set('fbCon',c.con,c.con+' contested'); set('fbBear',c.bear,c.bear+' Bears');
+  const lead=c.bull>c.bear?'Bulls are winning today':c.bear>c.bull?'Bears are winning today':'Today is dead even';
+  const t=S.updated?S.updated.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}):'';
+  $('frontNote').textContent=`${lead}, ${c.bull} territories to ${c.bear}. The round closes at 00:00 UTC, in ${untilReset()}. Updated ${t}.`;
+  const at=S.openAt?new Date(S.openAt).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}):'';
+  $('openNote').textContent = S.openSource==='shared'
+    ? `Today's opening positions were recorded at ${at} and are the same for everyone.`
+    : `The shared scoreboard ${S.serverErr==='not-configured'?'isn\'t connected yet':'can\'t be reached ('+S.serverErr+')'}, so today's open is this browser's first look at ${at}. Other players may see a different map until it's connected.`;
+}
+
+function renderDetail(){
+  const box=$('detail'), t=S.terr.find(x=>x.sym===S.selected); if(!t) return;
+  if (t.missing){ box.innerHTML=`<h2>${t.sym}</h2><p class="hint">GMX's live data doesn't include this market right now, so it stays contested until it comes back.</p>`; return; }
+  const status=t.side==='con'?'Contested':sideName(t.side)+' are gaining it';
+  const why=t.side==='con'
+    ? `Its margin has moved ${pts(t.move)} points since the open, inside the ${(CONFIG.DEAD*100).toFixed(1)}-point dead zone, so neither side has taken it.`
+    : `Its margin moved ${pts(t.move)} points since the open because ${t.side==='bull'?'longs grew faster than shorts':'shorts grew faster than longs'}.`;
+  const L=t.long, Sh=t.short, T=L+Sh;
+  let next;
+  if (t.side==='bull'){ const m=t.mOpen+CONFIG.DEAD, x=Math.max(0,(L-Sh-m*T)/(1+m)); next=`About ${fmt(x)} of new shorts would push it back to contested.`; }
+  else if (t.side==='bear'){ const m=t.mOpen-CONFIG.DEAD, x=Math.max(0,(m*T-(L-Sh))/(1-m)); next=`About ${fmt(x)} of new longs would push it back to contested.`; }
+  else next='A modest wave of new longs or shorts decides it. Contested hexes swing first.';
+  box.innerHTML=`<h2>${t.sym}</h2><div class="status" style="color:${color(t.side)}">${status}</div>
+    <dl class="oi"><dt>Margin at open</dt><dd>${pts(t.mOpen)}%</dd><dt>Margin now</dt><dd>${pts(t.mNow)}%</dd>
+    <dt>Longs</dt><dd>${fmt(L)}</dd><dt>Shorts</dt><dd>${fmt(Sh)}</dd><dt>Pools</dt><dd>${t.pools}</dd></dl>
+    <p class="hint">${why} ${next}</p>`;
+}
+
+/* ---------- sides, streaks, history ---------- */
+function mySide(){ return S.serverSide || store.get('bvb-picks',{})[today()] || null; }
+async function choose(side){
+  if (mySide()) return;
+  S.pickErr=null;
+  if (CONFIG.FUNCTION_URL && S.openSource==='shared'){
+    try{ const j=await api('POST',{},{action:'pick',anon_id:anonId,side}); S.serverSide=j.your_side; S.counts=j.counts; side=j.your_side||side; }
+    catch(e){ S.pickErr=e.message; renderSide(); return; }
+  }
+  const log=store.get('bvb-picks',{}); log[today()]=side; store.set('bvb-picks',log);
+  renderSide(); Rain.refresh();
+}
+function renderSide(){
+  const side=mySide(), c=counts();
+  $('pickBull').setAttribute('aria-pressed',side==='bull'); $('pickBear').setAttribute('aria-pressed',side==='bear');
+  $('pickBull').disabled=$('pickBear').disabled=!!side;
+  if (S.pickErr) $('sideNote').textContent=`Your pick didn't go through: ${S.pickErr}`;
+  else if (side && S.terr.length){
+    const mine=c[side], theirs=c[side==='bull'?'bear':'bull'];
+    const msg=mine>theirs?`your side is winning, ${mine} territories to ${theirs}.`:mine<theirs?`your side is behind, ${mine} to ${theirs}. Contested hexes swing first, so watch those.`:`it's tied at ${mine}. The contested hexes decide it.`;
+    $('sideNote').textContent=`You're with the ${sideName(side)} today and your pick is locked. Right now ${msg} New round in ${untilReset()}.`;
+  }
+  $('countNote').textContent = S.counts
+    ? (S.counts.bull+S.counts.bear ? `${S.counts.bull} Bulls and ${S.counts.bear} Bears have picked a side today.` : 'Nobody has picked a side yet today. Be the first.')
+    : 'Headcounts show once the shared scoreboard is connected. Until then, picks are saved only in this browser.';
+  const log=store.get('bvb-picks',{}); let streak=0;
+  for (const r of S.history){ const p=log[r.day]; if(!p||r.winner!==p) break; streak++; }
+  $('streakNote').textContent = !S.history.length ? '' : streak ? `Your win streak: ${streak} day${streak>1?'s':''}.` : 'No active win streak. Streaks count consecutive days you picked the winning side in this browser.';
+}
+function renderHistory(){
+  const h=$('hist');
+  if (!S.history.length){ h.innerHTML=''; $('histNote').textContent = S.openSource==='shared' ? 'No finished rounds yet. The first result posts right after 00:00 UTC.' : 'Round history needs the shared scoreboard, which isn\'t connected yet.'; return; }
+  $('histNote').textContent='Each round is scored on how far every territory moved from its open to the next day\'s open.';
+  h.innerHTML=S.history.map(r=>{
+    const d=new Date(r.day+'T00:00:00Z').toLocaleDateString([],{month:'short',day:'numeric',timeZone:'UTC'});
+    return `<div style="background:${color(r.winner==='tie'?'con':r.winner)}" title="${r.bull_picks} Bulls and ${r.bear_picks} Bears picked"><b>${r.winner==='tie'?'Tie':sideName(r.winner)}</b>${d}, ${r.bull}–${r.bear}</div>`;
+  }).join('');
+}
+$('pickBull').onclick=()=>choose('bull'); $('pickBear').onclick=()=>choose('bear');
+
+/* ---------- Liquidation Rain ---------- */
+const Rain=(()=>{
+  const cvs=$('cvs'), ctx=cvs.getContext('2d'), ov=$('ov'), btn=$('playBtn');
+  const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+  let W=800,H=400,dpr=1, G=null, pending=[], keys={}, raf=0, last=0;
+  const best=()=>store.get('bvb-rain-best',0);
+  function size(){ dpr=Math.min(devicePixelRatio||1,2); W=cvs.clientWidth; H=Math.min(440,Math.max(300,W*.5)); cvs.style.height=H+'px'; cvs.width=W*dpr; cvs.height=H*dpr; ctx.setTransform(dpr,0,0,dpr,0,0); if(!G) drawIdle(); }
+  function refresh(){
+    if (G && G.running) return;
+    const side=mySide();
+    btn.disabled=!side;
+    if (!side){ $('ovTitle').textContent='Pick a side first'; $('ovText').textContent='Your catcher takes your faction\'s color, so choose Bulls or Bears above to play.'; }
+    else if (!G){ $('ovTitle').textContent='60 seconds, 3 lives'; $('ovText').textContent=`You're catching for the ${sideName(side)}. Move with your mouse, finger, or the arrow keys. ${sideName(side)} crates score, gold crates score for anyone, and each enemy crate costs a life. Best: ${best()}.`; }
+  }
+  function queue(e){ pending.push(e); }
+  function start(){
+    const side=mySide(); if(!side||!S.terr.length) return;
+    G={running:true, side, x:W/2, crates:[], lives:3, score:0, t:0, spawn:0, flash:0};
+    ov.hidden=true; last=performance.now(); cancelAnimationFrame(raf); raf=requestAnimationFrame(loop);
+  }
+  function spawn(big){
+    let t, side, label='';
+    if (big){ t=S.terr.find(x=>x.sym===big.sym)||S.terr[0]; side=big.side; label=big.label; }
+    else {
+      const tot=S.terr.reduce((a,b)=>a+(b.total||0),0); let r=Math.random()*tot; t=S.terr[0];
+      for (const x of S.terr){ r-=(x.total||0); if(r<=0){ t=x; break; } }
+      side=t.side==='con'?'gold':t.side;
+    }
+    const sz=big?60:26+Math.min(Math.abs(t.move||0)/.05,1)*22;
+    const pace=1+G.t/60*1.2;
+    G.crates.push({x:sz/2+Math.random()*(W-sz), y:-sz, s:sz, vy:H*(.22+Math.random()*.12)*pace*(big?.8:1), side, sym:t.sym, label, big:!!big});
+  }
+  function end(){
+    G.running=false; const b=best(); if(G.score>b) store.set('bvb-rain-best',G.score);
+    $('ovTitle').textContent=G.lives<=0?`Out of lives at ${G.score}`:`Time. You scored ${G.score}`;
+    $('ovText').textContent=G.score>b?'That\'s a new personal best on this device.':`Your best is ${Math.max(b,G.score)}. Big crates are worth 50, so catch the real drops.`;
+    btn.textContent='Play again'; ov.hidden=false;
+  }
+  function loop(now){
+    if (!G||!G.running) return;
+    const dt=Math.min(.05,(now-last)/1000); last=now;
+    if (document.hidden){ raf=requestAnimationFrame(loop); return; }
+    G.t+=dt; G.spawn-=dt; G.flash=Math.max(0,G.flash-dt);
+    if (pending.length) spawn(pending.shift());
+    if (G.spawn<=0){ spawn(); G.spawn=Math.max(.28,.8-G.t*.008); }
+    const sp=W*1.1*dt; if(keys.ArrowLeft||keys.a) G.x-=sp; if(keys.ArrowRight||keys.d) G.x+=sp;
+    const cw=Math.max(80,W*.12); G.x=Math.max(cw/2,Math.min(W-cw/2,G.x));
+    const catchY=H-30;
+    G.crates=G.crates.filter(c=>{
+      c.y+=c.vy*dt;
+      if (c.y+c.s/2>=catchY && c.y-c.s/2<catchY+14 && Math.abs(c.x-G.x)<cw/2+c.s/2){
+        if (c.side===G.side) G.score+=c.big?50:10;
+        else if (c.side==='gold') G.score+=25;
+        else { G.lives--; G.flash=.25; }
+        return false;
+      }
+      return c.y-c.s<H;
+    });
+    draw(cw);
+    if (G.lives<=0||G.t>=60) return end();
+    raf=requestAnimationFrame(loop);
+  }
+  const col={bull:'#5bb46a',bear:'#d25a3c',gold:'#c9b458'};
+  function drawBg(){
+    ctx.fillStyle=G&&G.flash?'#3a2320':'#172229'; ctx.fillRect(0,0,W,H);
+    if (!reduce){ ctx.strokeStyle='rgba(230,226,211,.06)'; ctx.lineWidth=1; const o=(performance.now()/6)%40;
+      for(let x=-H;x<W;x+=34){ ctx.beginPath(); ctx.moveTo(x+o*.3,o-40); ctx.lineTo(x+o*.3+H*.25,H+o); ctx.stroke(); } }
+  }
+  function draw(cw){
+    drawBg();
+    for (const c of G.crates){
+      ctx.fillStyle=col[c.side]; ctx.beginPath(); ctx.roundRect(c.x-c.s/2,c.y-c.s/2,c.s,c.s,4); ctx.fill();
+      ctx.strokeStyle='rgba(0,0,0,.35)'; ctx.lineWidth=2; ctx.stroke();
+      ctx.fillStyle='#161d22'; ctx.textAlign='center'; ctx.font=`800 ${Math.max(12,c.s*.36)}px 'Big Shoulders Display', Impact, sans-serif`;
+      ctx.fillText(c.sym,c.x,c.y+(c.big?-2:c.s*.13));
+      if (c.big){ ctx.font=`600 11px 'IBM Plex Sans', sans-serif`; ctx.fillText(c.label,c.x,c.y+16); }
+    }
+    ctx.fillStyle=col[G.side]; ctx.beginPath(); ctx.roundRect(G.x-cw/2,H-30,cw,14,5); ctx.fill();
+    ctx.fillStyle='#e6e2d3'; ctx.textAlign='left'; ctx.font=`600 22px 'Big Shoulders Display', Impact, sans-serif`;
+    ctx.fillText(`Score ${G.score}`,14,30); ctx.textAlign='center'; ctx.fillText(`${Math.ceil(60-G.t)}s`,W/2,30);
+    ctx.textAlign='right'; ctx.fillText(`Lives ${G.lives}`,W-14,30);
+  }
+  function drawIdle(){ drawBg(); }
+  cvs.addEventListener('pointermove',e=>{ if(G&&G.running){ const r=cvs.getBoundingClientRect(); G.x=e.clientX-r.left; } });
+  cvs.addEventListener('pointerdown',e=>{ if(G&&G.running){ const r=cvs.getBoundingClientRect(); G.x=e.clientX-r.left; } });
+  addEventListener('keydown',e=>{ if(G&&G.running&&['ArrowLeft','ArrowRight'].includes(e.key)) e.preventDefault(); keys[e.key]=true; });
+  addEventListener('keyup',e=>{ keys[e.key]=false; });
+  addEventListener('resize',size);
+  btn.onclick=start;
+  size(); refresh();
+  return {queue, refresh};
+})();
+
+/* ---------- boot ---------- */
+(async()=>{
+  await refreshServer(); await tick(); Rain.refresh();
+  setInterval(tick, CONFIG.REFRESH_MS);
+  setInterval(async()=>{ await refreshServer(); if(S.live){ ensureLocalOpen(); buildTerritories(); render(); } }, CONFIG.SERVER_MS);
+  setInterval(()=>{ if(S.terr.length){ renderFront(); renderSide(); } }, 30000);
+})();
+</script>
+</body>
+</html>
