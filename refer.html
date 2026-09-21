@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Trade with the crew — Bulls vs Bears GMX code</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ground:#1f2c35; --panel:#283843; --line:#3a4d5a; --text:#e6e2d3; --muted:#9fb0b8;
+  --bull:#5bb46a; --bear:#d25a3c; --brass:#c9b458;
+  --display:'Big Shoulders Display','Arial Narrow',Impact,sans-serif;
+  --body:'IBM Plex Sans','Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--ground);color:var(--text);font:16px/1.55 var(--body);
+  background-image:repeating-radial-gradient(circle at 70% 30%,transparent 0 38px,rgba(255,255,255,.025) 38px 39px)}
+.wrap{max-width:860px;margin:0 auto;padding:28px 20px 56px}
+a{color:var(--text)}
+.back{color:var(--muted);font-size:14px}
+h1{font:800 clamp(46px,9vw,92px)/.9 var(--display);margin:18px 0 10px}
+.lede{color:var(--muted);max-width:60ch;margin:0 0 28px;font-size:17px}
+.code{display:flex;flex-wrap:wrap;align-items:stretch;gap:12px;margin:0 0 10px}
+.code .chip{flex:1 1 260px;border:2px dashed var(--brass);border-radius:6px;padding:14px 18px;display:flex;flex-direction:column;justify-content:center}
+.code .chip span{color:var(--muted);font-size:13.5px}
+.code .chip b{font:800 44px/1 var(--display);letter-spacing:.03em;color:var(--brass);word-break:break-all}
+.btns{display:flex;flex-direction:column;gap:10px;flex:1 1 220px}
+.btns a,.btns button{font:800 24px var(--display);padding:12px 18px;border-radius:4px;text-align:center;text-decoration:none;cursor:pointer;border:0}
+.go{background:var(--bull);color:#10240f}
+.copy{background:var(--panel);color:var(--text);border:1px solid var(--line)!important}
+.btns :focus-visible{outline:3px solid var(--text);outline-offset:2px}
+.status{color:var(--muted);font-size:14px;min-height:1.4em;margin:0 0 34px}
+.empty{border:1px solid var(--bear);background:rgba(210,90,60,.12);border-radius:4px;padding:14px 16px;margin:0 0 34px}
+h2{font:800 34px/1 var(--display);margin:36px 0 10px}
+p{max-width:66ch}
+.tiers{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:14px 0}
+@media (max-width:600px){.tiers{grid-template-columns:1fr}}
+.tier{border:1px solid var(--line);border-radius:4px;padding:14px 16px;background:rgba(0,0,0,.12)}
+.tier b{font:800 40px/1 var(--display);display:block}
+.tier.now{border-color:var(--brass)}
+.tier small{color:var(--muted);display:block;margin-top:6px;font-size:14px}
+ol{padding-left:22px;max-width:66ch}
+ol li{margin:0 0 10px}
+.disclose{border-left:4px solid var(--brass);padding:4px 0 4px 16px;color:var(--muted)}
+footer{color:var(--muted);font-size:13.5px;margin-top:40px;max-width:74ch}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <a class="back" href="./">Back to Bulls vs Bears</a>
+  <h1>Trade with the crew</h1>
+  <p class="lede">One referral code for everyone who plays Bulls vs Bears. You pay lower fees on GMX, and the more of us trade on it, the bigger the discount gets for all of us.</p>
+
+  <div id="codeBlock">
+    <div class="code">
+      <div class="chip"><span>Crew code on GMX (Arbitrum)</span><b id="codeText"></b></div>
+      <div class="btns">
+        <a class="go" id="goLink" href="#" target="_blank" rel="noopener">Open GMX with the code</a>
+        <button class="copy" id="copyBtn" type="button">Copy code</button>
+      </div>
+    </div>
+    <p class="status" id="status" aria-live="polite">The link opens GMX with the code already filled in. Your first trade locks it to your wallet.</p>
+  </div>
+  <div class="empty" id="emptyBlock" hidden>The crew code hasn't been set on this page yet, so there's nothing to copy. Once it's added, the code and a one-tap GMX link will appear here.</div>
+
+  <h2>What you get</h2>
+  <p>A discount on GMX's opening and closing position fees, taken off automatically every time a trade executes. There's nothing to claim. Borrowing and funding fees aren't discounted.</p>
+  <div class="tiers">
+    <div class="tier now"><b>5% off</b>Where the crew starts. Every new code on GMX begins at this tier.<small>This is the discount you get today.</small></div>
+    <div class="tier"><b>10% off</b>Unlocks for everyone on the code once the crew has 15 active traders in a week and $5M in combined weekly volume.<small>No single trader has to hit that alone. It's a group target.</small></div>
+  </div>
+  <p>Some sites advertise codes already sitting at 10%. That's real, and it's worth knowing. The reason to use the crew code is the crew: your trades count toward a shared goal with the people you're playing against on the map every day.</p>
+
+  <h2>How to use it</h2>
+  <ol>
+    <li><b>New to GMX:</b> tap "Open GMX with the code", connect your wallet, and trade as normal. The code is saved in your browser and gets written to your wallet with your first order.</li>
+    <li><b>Already trade on GMX without a code:</b> open the Referrals page on GMX, choose Traders, paste the crew code, and confirm. The discount applies to trades from then on.</li>
+    <li><b>Already using someone else's code:</b> you can switch on the same Referrals page. Your current code stays in place until you change it.</li>
+  </ol>
+
+  <h2>Straight answer on who benefits</h2>
+  <p class="disclose">This code belongs to the person who built Bulls vs Bears. GMX pays the code owner a share of the position fees from traders who use it, 5% at the starting tier. That share comes out of GMX's fees, not out of your pocket: with the code you always pay less than you would with no code at all. The code never gives anyone access to your wallet or funds.</p>
+
+  <footer>Trading perpetuals with leverage can lose more than you expect, fast. A fee discount doesn't change that. Tier requirements are set by GMX and can change; check GMX's own Referrals page for the current numbers.</footer>
+</div>
+<script>
+const CONFIG = {
+  REF_CODE: 'barcode557a'   // your GMX referral code, exactly as registered (case-sensitive)
+};
+const code = CONFIG.REF_CODE.trim();
+if (!code){ document.getElementById('codeBlock').hidden = true; document.getElementById('emptyBlock').hidden = false; }
+else {
+  document.getElementById('codeText').textContent = code;
+  document.getElementById('goLink').href = 'https://app.gmx.io/trade/?ref=' + encodeURIComponent(code);
+  document.getElementById('copyBtn').onclick = async () => {
+    const st = document.getElementById('status');
+    try { await navigator.clipboard.writeText(code); st.textContent = `Copied "${code}". Paste it on GMX's Referrals page under Traders.`; }
+    catch { st.textContent = `Your browser blocked copying. The code is ${code}; type it on GMX's Referrals page under Traders. It's case-sensitive.`; }
+  };
+}
+</script>
+</body>
+</html>
