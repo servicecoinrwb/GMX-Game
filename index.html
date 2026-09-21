@@ -87,6 +87,13 @@ canvas{display:block;width:100%}
 .mycalls{margin-top:18px}
 .mycalls li{margin:4px 0;color:var(--muted);font-size:14.5px}
 .mycalls li b{color:var(--text);font-weight:600}
+.crew{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;margin:20px 0 0;padding:10px 14px;border:1px dashed var(--brass);border-radius:6px;background:rgba(201,180,88,.07)}
+.crew p{margin:0;flex:1 1 280px;font-size:14.5px;color:var(--muted)}
+.crew p b{color:var(--text);font-weight:600}
+.crew .code{font:800 26px/1 var(--display);color:var(--brass);letter-spacing:.03em}
+.crew a,.crew button{font:600 15px var(--body);padding:7px 12px;border-radius:3px;cursor:pointer;text-decoration:none;border:1px solid var(--line);background:var(--panel);color:var(--text)}
+.crew a.go{background:var(--bull);border-color:var(--bull);color:#10240f}
+.crew a.more{border:0;background:none;padding:7px 2px;text-decoration:underline;color:var(--muted)}
 footer{color:var(--muted);font-size:13.5px;margin-top:34px;max-width:80ch}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -97,6 +104,14 @@ footer{color:var(--muted);font-size:13.5px;margin-top:34px;max-width:80ch}
   <h1>Bulls vs Bears</h1>
   <p>Every GMX market is a territory. The map opens fresh at 00:00 UTC, and whichever side pushes a market its way since the open takes the ground. Longs flowing in move it toward the Bulls; shorts flowing in move it toward the Bears.</p>
 </header>
+
+<div class="crew" role="region" aria-label="Crew referral code">
+  <span class="code" id="crewCode">barcode557a</span>
+  <p><b>Trade with the crew code</b> for 5% off GMX position fees. If the crew hits 15 weekly traders and $5M weekly volume, it goes to 10% for everyone on it.</p>
+  <button type="button" id="crewCopy">Copy code</button>
+  <a class="go" href="https://app.gmx.io/trade/?ref=barcode557a" target="_blank" rel="noopener">Open GMX</a>
+  <a class="more" href="refer.html">How it works</a>
+</div>
 
 <div class="front" aria-live="polite">
   <div class="front-bar"><div class="fb-bull" id="fbBull" style="flex-basis:33%">Bulls</div><div class="fb-con" id="fbCon" style="flex-basis:34%">…</div><div class="fb-bear" id="fbBear" style="flex-basis:33%">Bears</div></div>
@@ -119,6 +134,7 @@ footer{color:var(--muted);font-size:13.5px;margin-top:34px;max-width:80ch}
       <h3>Your side today</h3>
       <div class="sides"><button class="b1" id="pickBull" aria-pressed="false">Bulls</button><button class="b2" id="pickBear" aria-pressed="false">Bears</button></div>
       <p class="hint" id="sideNote">Pick a side for today. It locks once you choose, and your side wins if it takes more territory by 00:00 UTC.</p>
+      <p class="hint" id="crewNudge" hidden>Trading your side for real? Use the <a href="refer.html" style="color:var(--text)">crew code</a> and your GMX fees drop 5%.</p>
       <p class="hint" id="countNote"></p>
       <p class="hint" id="streakNote"></p>
     </section>
@@ -358,6 +374,7 @@ function renderSide(){
   const side=mySide(), c=counts();
   $('pickBull').setAttribute('aria-pressed',side==='bull'); $('pickBear').setAttribute('aria-pressed',side==='bear');
   $('pickBull').disabled=$('pickBear').disabled=!!side;
+  $('crewNudge').hidden=!side;
   if (S.pickErr) $('sideNote').textContent=`Your pick didn't go through: ${S.pickErr}`;
   else if (side && S.terr.length){
     const mine=c[side], theirs=c[side==='bull'?'bear':'bull'];
@@ -574,6 +591,8 @@ const Whale=(()=>{
   }
   return {load};
 })();
+
+$('crewCopy').onclick=async()=>{ const b=$('crewCopy'); try{ await navigator.clipboard.writeText('barcode557a'); b.textContent='Copied'; }catch{ b.textContent='Copy blocked: barcode557a'; } setTimeout(()=>b.textContent='Copy code',2500); };
 
 /* ---------- boot ---------- */
 (async()=>{
