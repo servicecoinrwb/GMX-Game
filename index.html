@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">   
+<html lang="en">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -258,6 +258,7 @@ function hexPts(cx,cy,s){ const p=[]; for(let i=0;i<6;i++){ const a=Math.PI/180*
 const color = s => s==='bull'?'var(--bull)':s==='bear'?'var(--bear)':'var(--brass)';
 const fmt = n => n>=1e9?'$'+(n/1e9).toFixed(2)+'B':n>=1e6?'$'+(n/1e6).toFixed(1)+'M':'$'+Math.round(n/1e3)+'K';
 const pts = m => { const v=(m*100).toFixed(1); return v==='0.0'||v==='-0.0' ? '0.0' : (m>0?'+':'')+v; };
+const terrs = n => n+(n===1?' territory':' territories');
 const sideName = s => s==='bull'?'Bulls':s==='bear'?'Bears':'Nobody';
 
 function render(){
@@ -281,11 +282,11 @@ function untilReset(){ const n=new Date(), e=Date.UTC(n.getUTCFullYear(),n.getUT
 
 function renderFront(){
   const c=counts(), n=S.terr.length||1;
-  const set=(id,v,txt)=>{ const el=$(id); el.style.flexBasis=(v/n*100)+'%'; el.textContent=v?txt:''; };
+  const set=(id,v,txt)=>{ const el=$(id); el.style.flexBasis=(v/n*100)+'%'; el.style.padding=v?'':'0'; el.textContent=v?txt:''; };
   set('fbBull',c.bull,'Bulls '+c.bull); set('fbCon',c.con,c.con+' contested'); set('fbBear',c.bear,c.bear+' Bears');
   const lead=c.bull>c.bear?'Bulls are winning today':c.bear>c.bull?'Bears are winning today':'Today is dead even';
   const t=S.updated?S.updated.toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}):'';
-  $('frontNote').textContent=`${lead}, ${c.bull} territories to ${c.bear}. The round closes at 00:00 UTC, in ${untilReset()}. Updated ${t}.`;
+  $('frontNote').textContent=`${lead}, ${terrs(c.bull)} to ${c.bear}. The round closes at 00:00 UTC, in ${untilReset()}. Updated ${t}.`;
   const at=S.openAt?new Date(S.openAt).toLocaleTimeString([],{hour:'numeric',minute:'2-digit'}):'';
   $('openNote').textContent = S.openSource==='shared'
     ? `Today's opening positions were recorded at ${at} and are the same for everyone.`
@@ -329,7 +330,7 @@ function renderSide(){
   if (S.pickErr) $('sideNote').textContent=`Your pick didn't go through: ${S.pickErr}`;
   else if (side && S.terr.length){
     const mine=c[side], theirs=c[side==='bull'?'bear':'bull'];
-    const msg=mine>theirs?`your side is winning, ${mine} territories to ${theirs}.`:mine<theirs?`your side is behind, ${mine} to ${theirs}. Contested hexes swing first, so watch those.`:`it's tied at ${mine}. The contested hexes decide it.`;
+    const msg=mine>theirs?`your side is winning, ${terrs(mine)} to ${theirs}.`:mine<theirs?`your side is behind, ${mine} to ${theirs}. Contested hexes swing first, so watch those.`:`it's tied at ${mine}. The contested hexes decide it.`;
     $('sideNote').textContent=`You're with the ${sideName(side)} today and your pick is locked. Right now ${msg} New round in ${untilReset()}.`;
   }
   $('countNote').textContent = S.counts
