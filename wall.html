@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Crew wall — Bulls vs Bears</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@600;800&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ground:#1f2c35; --panel:#283843; --line:#3a4d5a; --text:#e6e2d3; --muted:#9fb0b8;
+  --bull:#5bb46a; --bear:#d25a3c; --brass:#c9b458;
+  --display:'Big Shoulders Display','Arial Narrow',Impact,sans-serif;
+  --body:'IBM Plex Sans','Segoe UI',Roboto,Helvetica,Arial,sans-serif;
+  box-sizing:border-box; padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+}
+*,*::before,*::after{box-sizing:inherit}
+body{margin:0;background:var(--ground);color:var(--text);font:16px/1.55 var(--body);
+  background-image:repeating-radial-gradient(circle at 70% 30%,transparent 0 38px,rgba(255,255,255,.025) 38px 39px)}
+.wrap{max-width:1180px;margin:0 auto;padding:28px 20px 56px}
+nav{display:flex;gap:18px;font-size:14px}
+nav a{color:var(--muted)} nav a[aria-current]{color:var(--text);text-decoration:none;font-weight:600}
+h1{font:800 clamp(46px,9vw,92px)/.9 var(--display);margin:18px 0 10px}
+.lede{color:var(--muted);max-width:62ch;margin:0 0 24px;font-size:17px}
+form{border:1px dashed var(--brass);border-radius:6px;padding:16px;display:grid;grid-template-columns:2fr 90px 2fr auto;gap:10px;align-items:end;background:rgba(201,180,88,.06)}
+@media (max-width:760px){form{grid-template-columns:1fr 1fr}.full{grid-column:1/-1}}
+label{display:flex;flex-direction:column;gap:4px;font-size:13.5px;color:var(--muted)}
+input{font:500 15px var(--body);padding:9px 10px;border-radius:3px;border:1px solid var(--line);background:#172229;color:var(--text);width:100%}
+input:focus-visible,button:focus-visible{outline:3px solid var(--text);outline-offset:1px}
+#initials{text-transform:uppercase;font:800 20px var(--display);letter-spacing:.1em}
+button{font:800 22px var(--display);padding:8px 20px;border-radius:4px;border:0;cursor:pointer;background:var(--bull);color:#10240f}
+button:disabled{opacity:.5;cursor:wait}
+.msg{min-height:1.5em;color:var(--muted);font-size:14.5px;margin:10px 0 0}
+.msg.bad{color:#f0a08c}
+.how{color:var(--muted);font-size:14px;margin:6px 0 30px;max-width:80ch}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(300px,1fr));gap:18px}
+figure{margin:0;border:1px solid var(--line);border-radius:6px;overflow:hidden;background:#172229}
+figure a{display:block;line-height:0}
+figure img{width:100%;height:auto;aspect-ratio:920/480;object-fit:cover;background:#101a20}
+figcaption{padding:10px 12px;font-size:14.5px;display:flex;gap:10px;align-items:baseline}
+figcaption b{font:800 22px var(--display);color:var(--brass);letter-spacing:.06em}
+figcaption span{color:var(--muted);flex:1}
+figcaption time{color:var(--muted);font-size:12.5px;white-space:nowrap}
+.empty{color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:18px}
+footer{color:var(--muted);font-size:13.5px;margin-top:40px;max-width:78ch}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <nav><a href="./">Map</a><a href="wall.html" aria-current="page">Crew wall</a><a href="refer.html">Crew code</a></nav>
+  <h1>Crew wall</h1>
+  <p class="lede">Post your GMX trades for the crew. Paste the share link GMX gives you and your trade card goes up on the wall.</p>
+
+  <form id="f" novalidate>
+    <label class="full">GMX share link<input id="link" inputmode="url" placeholder="https://share.gmx.io/api/s?id=…" autocomplete="off" required></label>
+    <label>Initials<input id="initials" maxlength="3" placeholder="ABC" autocomplete="off" required></label>
+    <label class="full">Caption (optional)<input id="caption" maxlength="80" placeholder="Called it on the map this morning"></label>
+    <button id="postBtn" type="submit">Post</button>
+  </form>
+  <p class="msg" id="msg" aria-live="polite"></p>
+  <p class="how">To get a share link on GMX, open a position or a closed trade, tap Share, and copy the link. The card shows whatever GMX shows, including your own referral code if you have one. Tapping a card on this wall opens GMX with the crew code.</p>
+
+  <div class="grid" id="grid"><p class="empty">Loading the wall…</p></div>
+
+  <footer>This wall shows the trades people chose to post, which skews toward wins. It isn't anyone's track record, and a 50x screenshot doesn't show the ones that got liquidated. Posts can be taken down if they're spam or not GMX trades.</footer>
+</div>
+<script>
+const CONFIG = {
+  FUNCTION_URL: 'https://aeqsnzcoboftxqoauiju.supabase.co/functions/v1/GMX-Game',
+  SUPABASE_ANON_KEY: 'sb_publishable_2wmoJjL3q2lBBfBi7ucqaA_BgB6jdhH',
+  REF_CODE: 'barcode557a'
+};
+const $ = id => document.getElementById(id);
+const SHARE_RE = /share\.gmx\.io\/api\/s\?(?:[^#]*&)?id=([a-z0-9]{8,40})/i;
+const img = id => `https://res.cloudinary.com/gmx/image/upload/gmx/${encodeURIComponent(id)}.jpg`;
+const shareUrl = id => `https://share.gmx.io/api/s?id=${encodeURIComponent(id)}&ref=${encodeURIComponent(CONFIG.REF_CODE)}`;
+const esc = t => String(t).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function when(ts){ const m=Math.round((Date.now()-Date.parse(ts))/60000); return m<60?`${Math.max(1,m)}m ago`:m<2880?`${Math.round(m/60)}h ago`:`${Math.round(m/1440)}d ago`; }
+
+async function api(method, params, body){
+  const u=new URL(CONFIG.FUNCTION_URL); Object.entries(params||{}).forEach(([k,v])=>u.searchParams.set(k,v));
+  const r=await fetch(u,{method,headers:{'content-type':'application/json',apikey:CONFIG.SUPABASE_ANON_KEY,Authorization:'Bearer '+CONFIG.SUPABASE_ANON_KEY},body:body?JSON.stringify(body):undefined});
+  const j=await r.json().catch(()=>({error:'The wall answered HTTP '+r.status}));
+  if (!r.ok) throw new Error(j.error||('HTTP '+r.status)); return j;
+}
+function render(list){
+  const g=$('grid');
+  if (!list.length){ g.innerHTML='<p class="empty">Nothing on the wall yet. Post the first trade above and it shows up here for the whole crew.</p>'; return; }
+  g.innerHTML=list.map(p=>`<figure>
+    <a href="${shareUrl(p.share_id)}" target="_blank" rel="noopener" aria-label="Open this trade on GMX"><img src="${img(p.share_id)}" alt="GMX trade card posted by ${esc(p.initials)}" loading="lazy" onerror="this.closest('figure').remove()"></a>
+    <figcaption><b>${esc(p.initials)}</b><span>${p.caption?esc(p.caption):''}</span><time datetime="${p.created_at}">${when(p.created_at)}</time></figcaption></figure>`).join('');
+}
+async function load(){
+  try{ render((await api('GET',{action:'wall'})).wall||[]); }
+  catch(e){ $('grid').innerHTML=`<p class="empty">The wall can't load right now: ${esc(e.message)}. It retries every two minutes.</p>`; }
+}
+$('link').addEventListener('input',()=>{ const ok=SHARE_RE.test($('link').value); const m=$('msg'); m.className='msg'; m.textContent=$('link').value&&!ok?'That doesn\'t look like a GMX share link yet. It should contain share.gmx.io/api/s?id=':''; });
+$('f').addEventListener('submit',async e=>{
+  e.preventDefault(); const m=$('msg'), b=$('postBtn');
+  const link=$('link').value.trim(), initials=$('initials').value.trim(), caption=$('caption').value.trim();
+  if (!SHARE_RE.test(link)){ m.className='msg bad'; m.textContent='Paste the share link from GMX: open the trade, tap Share, then copy the link.'; return; }
+  if (!/^[A-Za-z0-9]{3}$/.test(initials)){ m.className='msg bad'; m.textContent='Initials need to be exactly 3 letters or numbers.'; return; }
+  b.disabled=true; m.className='msg'; m.textContent='Posting…';
+  try{ const j=await api('POST',{},{action:'post',link,initials,caption}); render(j.wall||[]); $('f').reset(); m.textContent='Posted. Your trade is on the wall.'; }
+  catch(err){ m.className='msg bad'; m.textContent=err.message; }
+  finally{ b.disabled=false; }
+});
+load(); setInterval(load,120000);
+</script>
+</body>
+</html>
