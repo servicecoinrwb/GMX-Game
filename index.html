@@ -257,7 +257,7 @@ function ringCoords(n){
 function hexPts(cx,cy,s){ const p=[]; for(let i=0;i<6;i++){ const a=Math.PI/180*(60*i-30); p.push((cx+s*Math.cos(a)).toFixed(1)+','+(cy+s*Math.sin(a)).toFixed(1)); } return p.join(' '); }
 const color = s => s==='bull'?'var(--bull)':s==='bear'?'var(--bear)':'var(--brass)';
 const fmt = n => n>=1e9?'$'+(n/1e9).toFixed(2)+'B':n>=1e6?'$'+(n/1e6).toFixed(1)+'M':'$'+Math.round(n/1e3)+'K';
-const pts = m => (m>0?'+':'')+(m*100).toFixed(1);
+const pts = m => { const v=(m*100).toFixed(1); return v==='0.0'||v==='-0.0' ? '0.0' : (m>0?'+':'')+v; };
 const sideName = s => s==='bull'?'Bulls':s==='bear'?'Bears':'Nobody';
 
 function render(){
