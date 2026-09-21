@@ -70,6 +70,23 @@ canvas{display:block;width:100%}
 .overlay p{margin:0;color:var(--muted);max-width:44ch}
 .play{font:800 26px var(--display);padding:10px 30px;border-radius:4px;border:0;cursor:pointer;background:var(--text);color:#172229}
 .play:disabled{opacity:.4;cursor:not-allowed}
+.whales{margin-top:44px;border-top:1px solid var(--line);padding-top:26px}
+.whales h2{font-size:clamp(38px,6vw,60px)}
+.whales > p{color:var(--muted);max-width:68ch;margin:0 0 16px}
+.wgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:14px}
+.whale{border:1px solid var(--line);border-left:6px solid var(--brass);border-radius:4px;padding:14px 16px;background:rgba(0,0,0,.12)}
+.whale.bull{border-left-color:var(--bull)}.whale.bear{border-left-color:var(--bear)}
+.whale .size{font:800 36px/1 var(--display);margin:2px 0 4px}
+.whale .who{color:var(--muted);font-size:14px;margin:0 0 10px}
+.whale .tag{font:600 18px var(--display);letter-spacing:.02em}
+.calls{display:flex;gap:6px;flex-wrap:wrap}
+.calls button{flex:1;min-width:74px;font:600 15px var(--body);padding:7px 6px;border-radius:3px;border:1px solid var(--line);background:var(--panel);color:var(--text);cursor:pointer}
+.calls button:hover:not(:disabled){border-color:var(--text)}
+.calls button:disabled{opacity:.45;cursor:not-allowed}
+.calls button[aria-pressed="true"]{opacity:1;background:var(--text);color:#161d22;border-color:var(--text)}
+.mycalls{margin-top:18px}
+.mycalls li{margin:4px 0;color:var(--muted);font-size:14.5px}
+.mycalls li b{color:var(--text);font-weight:600}
 footer{color:var(--muted);font-size:13.5px;margin-top:34px;max-width:80ch}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
@@ -113,6 +130,18 @@ footer{color:var(--muted);font-size:13.5px;margin-top:34px;max-width:80ch}
   </aside>
 </div>
 
+<section class="whales" aria-labelledby="whaleTitle">
+  <h2 id="whaleTitle">Whale Watch</h2>
+  <p>The biggest open positions on GMX right now. Pick a whale and call how it ends: closed in profit, closed at a loss, or liquidated. Points land when the whole position closes, so a whale you call today might pay out next week.</p>
+  <div class="wgrid" id="wgrid"><p class="hint">Finding the biggest positions on GMX…</p></div>
+  <div class="err" id="werr"></div>
+  <div class="mycalls">
+    <h3>Your calls</h3>
+    <p class="hint" id="wpoints"></p>
+    <ul id="wlist"></ul>
+  </div>
+</section>
+
 <section class="rain" aria-labelledby="rainTitle">
   <h2 id="rainTitle">Liquidation Rain</h2>
   <p>Catch crates for your side and dodge the other side's. Every crate is a real GMX territory, colored by who's winning it today. The big ones are real events: when a market sheds a chunk of longs or shorts between updates — closes or liquidations — it drops as a crate for the side that gained.</p>
@@ -153,6 +182,7 @@ const store = {
 let anonId = store.get('bvb-anon', null);
 if (!anonId){ anonId = (crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-8xxx-xxxxxxxxxxxx'.replace(/x/g,()=>(Math.random()*16|0).toString(16))); store.set('bvb-anon', anonId); }
 
+const MARKET_SYM = {};
 const S = { live:null, prevLive:null, open:null, openDay:null, openSource:null, openAt:null,
   terr:[], selected:null, updated:null, counts:null, history:[], serverSide:null, serverErr:null, pickErr:null };
 
@@ -169,6 +199,7 @@ const SHORT_KEYS=['openInterestShort','shortOpenInterest','openInterestShortUsd'
 function aggregate(list){
   const by={};
   for (const m of list){
+    if (m.marketToken && m.name) MARKET_SYM[m.marketToken.toLowerCase()]=m.name.split('/')[0].trim();
     const name=m.name||'';
     if (!name||name.startsWith('SWAP-ONLY')||m.isListed===false||/deprecated/i.test(name)) continue;
     const sym=name.split('/')[0].trim(), L=toUsd(pickKey(m,LONG_KEYS)), Sh=toUsd(pickKey(m,SHORT_KEYS));
@@ -444,9 +475,109 @@ const Rain=(()=>{
   return {queue, refresh};
 })();
 
+/* ---------- Whale Watch ---------- */
+const Whale=(()=>{
+  const SQUID='https://gmx.squids.live/gmx-synthetics-arbitrum:prod/api/graphql';
+  const POINTS={green:10, red:10, liq:30};
+  const DECREASE=[4,5,6,7], LIQ=7;   // GMX OrderType: MarketDecrease, LimitDecrease, StopLossDecrease, Liquidation
+  let F=null, whales=[], st=store.get('bvb-whale',{calls:{}});
+  const save=()=>store.set('bvb-whale',st);
+  const short=a=>a?a.slice(0,6)+'…'+a.slice(-4):'unknown wallet';
+  const symOf=m=>MARKET_SYM[(m||'').toLowerCase()]||('market '+short(m));
+  const callName={green:'closes in profit', red:'closes at a loss', liq:'gets liquidated'};
+  async function gql(query, variables){
+    const r=await fetch(SQUID,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({query,variables})});
+    if (!r.ok) throw new Error('GMX position index answered HTTP '+r.status);
+    const j=await r.json(); if (j.errors) throw new Error(j.errors[0].message); return j.data;
+  }
+  async function probe(){
+    const d=await gql('{p:__type(name:"Position"){fields{name}} t:__type(name:"TradeAction"){fields{name}}}');
+    F={p:new Set((d.p&&d.p.fields||[]).map(f=>f.name)), t:new Set((d.t&&d.t.fields||[]).map(f=>f.name))};
+  }
+  function ago(ts){
+    if (!ts) return ''; let t=Number(ts); if (t<1e12) t*=1000;
+    const h=Math.max(0,(Date.now()-t)/36e5);
+    return h<1?`opened ${Math.round(h*60)}m ago`:h<48?`opened ${Math.round(h)}h ago`:`opened ${Math.round(h/24)} days ago`;
+  }
+  function werr(h){ const e=$('werr'); if(!h){ e.style.display='none'; return; } e.innerHTML=h; e.style.display='block'; }
+
+  async function load(){
+    try{
+      if (!F) await probe();
+      const miss=['id','account','market','isLong','sizeInUsd'].filter(f=>!F.p.has(f));
+      if (miss.length){ werr(`GMX's position index doesn't have the fields this section expects (missing: <code>${miss.join(', ')}</code>). Fields it does have: <code>${[...F.p].join(', ')}</code>.`); $('wgrid').innerHTML=''; return; }
+      const extra=F.p.has('openedAt')?'openedAt':'';
+      const where=F.p.has('isSnapshot')?'{sizeInUsd_gt:"0", isSnapshot_eq:false}':'{sizeInUsd_gt:"0"}';
+      const d=await gql(`{positions(where:${where}, orderBy:sizeInUsd_DESC, limit:9){id account market isLong sizeInUsd ${extra}}}`);
+      whales=(d.positions||[]).map(p=>({id:p.id, account:p.account, market:p.market, sym:symOf(p.market), side:p.isLong?'bull':'bear', size:toUsd(p.sizeInUsd), openedAt:p.openedAt}));
+      werr(''); await resolve(); render();
+    }catch(e){ werr(`Whale Watch can't reach GMX's position index right now. Reason: <code>${e.message}</code>. It retries every 90 seconds.`); if(!whales.length) $('wgrid').innerHTML=''; renderCalls(); }
+  }
+
+  async function outcomeOf(c){
+    const mk=F.t.has('marketAddress')?'marketAddress':F.t.has('market')?'market':null;
+    const pnl=['pnlUsd','basePnlUsd'].find(f=>F.t.has(f));
+    if (!mk||!F.t.has('orderType')||!F.t.has('account')) return {result:'unknown', why:'the trade index is missing the fields needed to read how it closed'};
+    const ev=F.t.has('eventName')?'eventName':'';
+    const d=await gql(`{tradeActions(where:{account_eq:"${c.account}", ${mk}_eq:"${c.market}"${F.t.has('isLong')?', isLong_eq:'+(c.side==='bull'):''}}, orderBy:timestamp_DESC, limit:6){orderType ${pnl||''} ${ev} timestamp}}`);
+    const a=(d.tradeActions||[]).find(x=>DECREASE.includes(Number(x.orderType)) && (!ev||x.eventName==='OrderExecuted'));
+    if (!a) return {result:'unknown', why:'no closing trade was found for it yet'};
+    if (Number(a.orderType)===LIQ) return {result:'liq'};
+    if (!pnl) return {result:'unknown', why:'the trade index doesn\'t report profit or loss'};
+    const v=toUsd(a[pnl]); return {result: v>0?'green':'red', pnl:v};
+  }
+  async function resolve(){
+    const open=Object.values(st.calls).filter(c=>!c.result); if(!open.length) return;
+    const d=await gql('query($ids:[String!]){positions(where:{id_in:$ids}){id sizeInUsd}}',{ids:open.map(c=>c.id)});
+    const size=Object.fromEntries((d.positions||[]).map(p=>[p.id,toUsd(p.sizeInUsd)]));
+    for (const c of open){
+      if ((size[c.id]||0)>0) continue;
+      const o=await outcomeOf(c);
+      if (o.result==='unknown'){ c.note=`Closed, but ${o.why}. It stays unscored until that changes.`; continue; }
+      c.result=o.result; c.closedAt=Date.now(); c.pnl=o.pnl;
+      const hit=c.call===o.result || (c.call==='red'&&o.result==='liq');
+      c.points=hit?POINTS[c.call]:0; c.note='';
+      if (o.result==='liq') Rain.queue({sym:c.sym, side:c.side==='bull'?'bear':'bull', label:'whale liquidated'});
+    }
+    save();
+  }
+  function call(id, choice){
+    const w=whales.find(x=>x.id===id); if(!w||st.calls[id]) return;
+    st.calls[id]={...w, call:choice, at:Date.now()}; save(); render();
+  }
+  function render(){
+    const g=$('wgrid');
+    if (!whales.length){ g.innerHTML='<p class="hint">GMX reports no open positions right now, which usually means its index is catching up. It checks again every 90 seconds.</p>'; renderCalls(); return; }
+    g.innerHTML=whales.map(w=>{
+      const c=st.calls[w.id];
+      const btn=k=>`<button data-id="${w.id}" data-k="${k}" aria-pressed="${c&&c.call===k}" ${c?'disabled':''}>${k==='green'?'Profit':k==='red'?'Loss':'Liquidated'}</button>`;
+      return `<article class="whale ${w.side}"><div class="tag" style="color:${color(w.side)}">${w.side==='bull'?'Bull':'Bear'} whale on ${w.sym}</div>
+        <div class="size">${fmt(w.size)}</div>
+        <p class="who">${short(w.account)} is ${w.side==='bull'?'long':'short'} ${w.sym}${w.openedAt?', '+ago(w.openedAt):''}. ${c?`You called it: ${callName[c.call]}.`:'How does it end?'}</p>
+        <div class="calls">${btn('green')}${btn('red')}${btn('liq')}</div></article>`;
+    }).join('');
+    g.querySelectorAll('button[data-id]').forEach(b=>b.onclick=()=>call(b.dataset.id,b.dataset.k));
+    renderCalls();
+  }
+  function renderCalls(){
+    const all=Object.values(st.calls).sort((a,b)=>b.at-a.at), done=all.filter(c=>c.result);
+    const pts=done.reduce((a,c)=>a+(c.points||0),0);
+    $('wpoints').textContent = !all.length
+      ? 'Make a call on any whale above. Profit and loss calls pay 10 points, a liquidation call pays 30, and a loss call also pays if the whale gets liquidated. Calls are saved in this browser for now.'
+      : `${pts} points from ${done.length} finished call${done.length===1?'':'s'}. ${all.length-done.length} still open. Calls are saved in this browser for now.`;
+    $('wlist').innerHTML=all.slice(0,12).map(c=>{
+      const head=`<b>${c.sym} ${c.side==='bull'?'long':'short'}, ${fmt(c.size)}</b>: you said it ${callName[c.call]}.`;
+      if (!c.result) return `<li>${head} ${c.note||'Still open, so nothing to score yet.'}</li>`;
+      const how=c.result==='liq'?'It was liquidated':c.result==='green'?'It closed in profit':'It closed at a loss';
+      return `<li>${head} ${how}${c.pnl!=null&&c.result!=='liq'?' ('+(c.pnl>0?'+':'−')+fmt(Math.abs(c.pnl))+')':''}, so you ${c.points?'earned '+c.points+' points':'earned nothing'}.</li>`;
+    }).join('');
+  }
+  return {load};
+})();
+
 /* ---------- boot ---------- */
 (async()=>{
-  await refreshServer(); await tick(); Rain.refresh();
+  await refreshServer(); await tick(); Rain.refresh(); Whale.load(); setInterval(Whale.load, 90000);
   setInterval(tick, CONFIG.REFRESH_MS);
   setInterval(async()=>{ await refreshServer(); if(S.live){ ensureLocalOpen(); buildTerritories(); render(); } }, CONFIG.SERVER_MS);
   setInterval(()=>{ if(S.terr.length){ renderFront(); renderSide(); } }, 30000);
