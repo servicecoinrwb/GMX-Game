@@ -44,6 +44,8 @@ figcaption{padding:10px 12px;font-size:14.5px;display:flex;gap:10px;align-items:
 figcaption b{font:800 22px var(--display);color:var(--brass);letter-spacing:.06em}
 figcaption span{color:var(--muted);flex:1}
 figcaption time{color:var(--muted);font-size:12.5px;white-space:nowrap}
+figcaption button{font:600 13px var(--body);padding:4px 10px;border-radius:3px;border:1px solid var(--line);background:var(--panel);color:var(--text);cursor:pointer}
+figcaption button:hover{border-color:var(--text)}
 .empty{color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:18px}
 footer{color:var(--muted);font-size:13.5px;margin-top:40px;max-width:78ch}
 </style>
@@ -91,7 +93,11 @@ function render(list){
   if (!list.length){ g.innerHTML='<p class="empty">Nothing on the wall yet. Post the first trade above and it shows up here for the whole crew.</p>'; return; }
   g.innerHTML=list.map(p=>`<figure>
     <a href="${shareUrl(p.share_id)}" target="_blank" rel="noopener" aria-label="Open this trade on GMX"><img src="${img(p.share_id)}" alt="GMX trade card posted by ${esc(p.initials)}" loading="lazy" onerror="this.closest('figure').remove()"></a>
-    <figcaption><b>${esc(p.initials)}</b><span>${p.caption?esc(p.caption):''}</span><time datetime="${p.created_at}">${when(p.created_at)}</time></figcaption></figure>`).join('');
+    <figcaption><b>${esc(p.initials)}</b><span>${p.caption?esc(p.caption):''}</span><time datetime="${p.created_at}">${when(p.created_at)}</time><button type="button" data-x="${esc(p.share_id)}" data-who="${esc(p.initials)}">Share</button></figcaption></figure>`).join('');
+  g.querySelectorAll('button[data-x]').forEach(b=>b.onclick=()=>{
+    const text=`${b.dataset.who} put this one on the crew wall. Post yours:`;
+    window.open('https://twitter.com/intent/tweet?text='+encodeURIComponent(text)+'&url='+encodeURIComponent(location.origin+location.pathname),'_blank','noopener,width=600,height=520');
+  });
 }
 async function load(){
   try{ render((await api('GET',{action:'wall'})).wall||[]); }
