@@ -362,7 +362,11 @@ function renderDetail(){
   box.innerHTML=`<h2>${t.sym}</h2><div class="status" style="color:${color(t.side)}">${status}</div>
     <dl class="oi"><dt>Margin at open</dt><dd>${pts(t.mOpen)}%</dd><dt>Margin now</dt><dd>${pts(t.mNow)}%</dd>
     <dt>Longs</dt><dd>${fmt(L)}</dd><dt>Shorts</dt><dd>${fmt(Sh)}</dd><dt>Pools</dt><dd>${t.pools}</dd></dl>
-    <p class="hint">${why} ${next}</p>`;
+    <p class="hint">${why} ${next}</p>
+    <button type="button" class="share" id="shareTerr">Share this territory</button>`;
+  $('shareTerr').onclick=()=>postX(t.side==='con'
+    ? `${t.sym} is the tightest ground on the GMX map today: ${fmt(L)} long against ${fmt(Sh)} short, and neither side can take it. Pick a side:`
+    : `${sideName(t.side)} are taking ${t.sym} on the GMX map, ${pts(t.move)} points since the open. ${fmt(L)} long against ${fmt(Sh)} short right now.`);
 }
 
 /* ---------- sides, streaks, history ---------- */
@@ -403,6 +407,11 @@ function renderHistory(){
     const d=new Date(r.day+'T00:00:00Z').toLocaleDateString([],{month:'short',day:'numeric',timeZone:'UTC'});
     return `<div style="background:${color(r.winner==='tie'?'con':r.winner)}" title="${r.bull_picks} Bulls and ${r.bear_picks} Bears picked"><b>${r.winner==='tie'?'Tie':sideName(r.winner)}</b>${d}, ${r.bull}–${r.bear}</div>`;
   }).join('');
+  const last=S.history[0];
+  h.insertAdjacentHTML('beforeend','<div style="background:none;padding:0;min-width:100%"><button type="button" class="share" id="shareLast">Share yesterday&rsquo;s result</button></div>');
+  $('shareLast').onclick=()=>postX(last.winner==='tie'
+    ? `Yesterday ended level on the GMX territory map, ${last.bull}\u2013${last.bear}. Today's round is live:`
+    : `${sideName(last.winner)} took yesterday on the GMX territory map, ${Math.max(last.bull,last.bear)}\u2013${Math.min(last.bull,last.bear)}. Today's round is live, pick a side:`);
 }
 $('pickBull').onclick=()=>choose('bull'); $('pickBear').onclick=()=>choose('bear');
 
@@ -582,9 +591,11 @@ const Whale=(()=>{
       return `<article class="whale ${w.side}"><div class="tag" style="color:${color(w.side)}">${w.side==='bull'?'Bull':'Bear'} whale on ${w.sym}</div>
         <div class="size">${fmt(w.size)}</div>
         <p class="who">${short(w.account)} is ${w.side==='bull'?'long':'short'} ${w.sym}${w.openedAt?', '+ago(w.openedAt):''}. ${c?`You called it: ${callName[c.call]}.`:'How does it end?'}</p>
-        <div class="calls">${btn('green')}${btn('red')}${btn('liq')}</div></article>`;
+        <div class="calls">${btn('green')}${btn('red')}${btn('liq')}<button data-share="${w.id}" title="Share this whale">Share</button></div></article>`;
     }).join('');
     g.querySelectorAll('button[data-id]').forEach(b=>b.onclick=()=>call(b.dataset.id,b.dataset.k));
+    g.querySelectorAll('button[data-share]').forEach(b=>b.onclick=()=>{ const w=whales.find(x=>x.id===b.dataset.share); if(!w) return;
+      postX(`A ${fmt(w.size)} ${w.side==='bull'?'long':'short'} on ${w.sym} is sitting open on GMX right now. Profit, loss, or liquidation? Call it:`); });
     renderCalls();
   }
   function renderCalls(){
